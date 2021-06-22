@@ -1,0 +1,7 @@
+# PostgreSQL
+# ------------------------------------------------------------------------------
+POSTGRES_HOST=postgres
+POSTGRES_PORT=5432
+POSTGRES_DB=connector_street_api
+POSTGRES_USER=XHyJldDMdUGkiCozVDcehpjwdyZZjvzB
+POSTGRES_PASSWORD=Uycr3Z2jOVCelFeRhiPmMiib124xHymkVu8msDKTtOBfOmAqW4cdFd86Ii31xJS6
