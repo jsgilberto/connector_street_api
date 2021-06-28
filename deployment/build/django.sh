@@ -1,6 +1,4 @@
 #!/bin/bash
-echo "DJANGO_SETTINGS_MODULE:"
-echo $DJANGO_SETTINGS_MODULE
 
 # Build
 docker build \

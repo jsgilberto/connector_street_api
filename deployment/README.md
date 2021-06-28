@@ -327,3 +327,19 @@ aws ecs list-tasks --cluster cstreet-fargate-cluster-prod \
 --family django-task-def | jq '.taskArns[0]'
 ```
 
+Download existing Task definition:
+
+```bash
+aws ecs describe-task-definition \
+   --task-definition backend \
+   --query taskDefinition > deployment/tasks/backend-task-def.json
+```
+
+Script for changing task definition file:
+
+```bash
+python3 deployment/scripts/update_task_definition.py \
+    --container-name django \
+    --image-uri aws-ecr.com/django \
+    --task-definition deployment/tasks/backend-task-def.json
+```

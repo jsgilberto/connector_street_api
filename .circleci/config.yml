@@ -35,6 +35,25 @@ jobs:
             export IMAGE_TAG="${CIRCLE_WORKFLOW_ID:0:7}"
 
             sh deployment/build/django.sh
+      - run:
+          name: "Update task"
+          command: |
+            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_django"
+
+            export IMAGE_TAG="${CIRCLE_WORKFLOW_ID:0:7}"
+
+            mkdir deployment/tasks
+
+            aws ecs describe-task-definition \
+              --task-definition backend \
+              --query taskDefinition > deployment/tasks/backend-task-def.json
+
+            python3 deployment/scripts/update_task_definition.py \
+              --container-name django \
+              --image-uri "${REPOSITORY_URI}:${IMAGE_TAG}" \
+              --task-definition deployment/tasks/backend-task-def.json
+
+            cat deployment/tasks/backend-task-def.json
 
 
 workflows:
