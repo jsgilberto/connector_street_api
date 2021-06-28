@@ -17,12 +17,18 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Backend build
+          name: Test commands
           command: |
-             echo $PWD
-             ls
-             docker --version
-             aws --version
+            echo $PWD
+            ls
+            docker --version
+            aws --version
+      - run:
+          name: "Django: Build, tag and push image"
+          command: |
+            aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_URI
+            sh deployment/build/django.sh
+
 
 workflows:
   default:
