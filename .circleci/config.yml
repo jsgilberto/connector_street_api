@@ -80,9 +80,9 @@ jobs:
 
             # Update Service with new task definition.
             aws ecs update-service \
-              --cluster $CLUSTER_NAME
-              --service $SERVICE
-              --task-definition $TASK_DEFINITION_ARN
+              --cluster $CLUSTER_NAME \
+              --service $SERVICE \
+              --task-definition $TASK_DEFINITION_ARN \
               --force-new-deployment
 
 workflows:

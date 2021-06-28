@@ -338,8 +338,8 @@ Update an ECS Service:
 
 ```bash
 aws ecs update-service \
-    --cluster cstreet-fargate-cluster-prod
-    --service backend
+    --cluster cstreet-fargate-cluster-prod \
+    --service backend \
     --task-definition $TASK_DEFINITION_ARN
 ```
 
