@@ -17,6 +17,7 @@ jobs:
       # - image: hireme/docker-aws-cli:1.0.1
     steps:
       - checkout
+      # needed to run docker images with docker installed.
       - setup_remote_docker
       - run:
           name: Test commands
@@ -25,28 +26,38 @@ jobs:
             ls
             docker --version
             aws --version
+            jq --version
       - run:
-          name: "Django: Build, tag and push image"
+          name: "Authenticate docker with AWS ECR."
           command: |
             aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_URI
-
+      - run:
+          name: "Build, tag and push images"
+          command: |
+            # Django
             export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_django"
 
             export IMAGE_TAG="${CIRCLE_WORKFLOW_ID:0:7}"
 
             sh deployment/build/django.sh
+
+            # build other images as well.
       - run:
-          name: "Update backend task"
+          name: "Update backend task definition file"
           command: |
-            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_django"
 
-            export IMAGE_TAG="${CIRCLE_WORKFLOW_ID:0:7}"
-
+            # Create the temporal 'tasks' directory
             mkdir deployment/tasks
 
+            # Retrieve and Save 'backend' task definition in 'tasks' directory
             aws ecs describe-task-definition \
               --task-definition backend \
               --query taskDefinition > deployment/tasks/backend-task-def.json
+
+            # Modify task definition file to new container definition:
+            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_django"
+
+            export IMAGE_TAG="${CIRCLE_WORKFLOW_ID:0:7}"
 
             python3 deployment/scripts/update_task_definition.py \
               --container-name django \
@@ -54,7 +65,25 @@ jobs:
               --task-definition deployment/tasks/backend-task-def.json
 
             cat deployment/tasks/backend-task-def.json
+      - run:
+          name: "Update ECS service in AWS"
+          command: |
 
+            # Upload new task definition to AWS ECS.
+            TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
+              --cli-input-json file://deployment/tasks/backend-task-def.json | jq \
+              --raw '.taskDefinition.taskDefinitionArn')
+
+            CLUSTER_NAME="cstreet-fargate-cluster-prod"
+
+            SERVICE="backend"
+
+            # Update Service with new task definition.
+            aws ecs update-service \
+              --cluster $CLUSTER_NAME
+              --service $SERVICE
+              --task-definition $TASK_DEFINITION_ARN
+              --force-new-deployment
 
 workflows:
   default:

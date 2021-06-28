@@ -334,9 +334,18 @@ python3 deployment/scripts/update_task_definition.py \
     --task-definition deployment/tasks/backend-task-def.json
 ```
 
+Update an ECS Service:
+
 ```bash
 aws ecs update-service \
-    --cluster 
-    --service 
-    --
+    --cluster cstreet-fargate-cluster-prod
+    --service backend
+    --task-definition $TASK_DEFINITION_ARN
+```
+
+Update a Task Definition:
+
+```bash
+aws ecs register-task-definition \
+    --cli-input-json file://deployment/tasks/backend-task-def.json
 ```
