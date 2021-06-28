@@ -17,8 +17,7 @@ jobs:
       # - image: hireme/docker-aws-cli:1.0.1
     steps:
       - checkout
-      - setup_remote_docker:
-        version: 19.03.13
+      - setup_remote_docker
       - run:
           name: Test commands
           command: |
