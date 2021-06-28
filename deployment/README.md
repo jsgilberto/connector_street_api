@@ -96,10 +96,6 @@ Hiding some network components (NAT Gateways), when we execute the previous comm
 ![Database](./images/database.png)
 
 
-
-
-
-
 ## AWS ECR Repositories for docker images
 
 Command to create the ECR Repositories.
@@ -311,12 +307,6 @@ aws ecs execute-command --cluster $CLUSTER_NAME \
 ```
 
 
-## Load Balancer Custom DNS
-
-This could be achieved through cloudformation, but we are going to stick
-to the AWS console for now with Route 53.
-
-
 
 ## Misc
 
@@ -342,4 +332,11 @@ python3 deployment/scripts/update_task_definition.py \
     --container-name django \
     --image-uri aws-ecr.com/django \
     --task-definition deployment/tasks/backend-task-def.json
+```
+
+```bash
+aws ecs update-service \
+    --cluster 
+    --service 
+    --
 ```

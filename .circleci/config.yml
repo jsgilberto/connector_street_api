@@ -36,7 +36,7 @@ jobs:
 
             sh deployment/build/django.sh
       - run:
-          name: "Update task"
+          name: "Update backend task"
           command: |
             export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_django"
 
