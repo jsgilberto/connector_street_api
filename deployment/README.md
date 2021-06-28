@@ -206,6 +206,12 @@ CELERY_FLOWER_PASSWORD=
 # ------------------------------------------------------------------------------
 DATABASE_URL=postgres://username:password@db_host:5432/db_name
 CELERY_BROKER_URL=redis://localhost:6379/0
+
+# AWS Credentials
+# ------------------------------------------------------------------------------
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_DEFAULT_REGION=us-east-1
 ```
 
 Second env file: `.postgres.env` (sample)
