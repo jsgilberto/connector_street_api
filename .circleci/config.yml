@@ -11,7 +11,7 @@ jobs:
             echo "CIRCLE_WORKFLOW_ID = ${CIRCLE_WORKFLOW_ID}"
             echo "SHORT CIRCLE_WORKFLOW_ID = ${CIRCLE_WORKFLOW_ID:0:7}"
 
-  build-backend:
+  build:
     docker:
       - image: vistaprintufi/docker-aws-build
     steps:
@@ -23,3 +23,9 @@ jobs:
              ls
              docker --version
              aws --version
+
+workflows:
+  default:
+    jobs:
+      - echo-workflow-id
+      - build
