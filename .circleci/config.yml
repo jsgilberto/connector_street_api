@@ -1,0 +1,25 @@
+version: 2.1
+
+jobs:
+  echo-workflow-id:
+    docker:
+      - image: circleci/node:13.8.0
+    steps:
+      - run:
+          name: Workflow ID
+          command: |
+            echo "CIRCLE_WORKFLOW_ID = ${CIRCLE_WORKFLOW_ID}"
+            echo "SHORT CIRCLE_WORKFLOW_ID = ${CIRCLE_WORKFLOW_ID:0:7}"
+
+  build-backend:
+    docker:
+      - image: vistaprintufi/docker-aws-build
+    steps:
+      - checkout
+      - run:
+          name: Backend build
+          command: |
+             echo $PWD
+             ls
+             docker --version
+             aws --version
