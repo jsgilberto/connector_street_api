@@ -72,7 +72,7 @@ jobs:
             # Upload new task definition to AWS ECS.
             TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
               --cli-input-json file://deployment/tasks/backend-task-def.json | jq \
-              --raw '.taskDefinition.taskDefinitionArn')
+              --raw-output '.taskDefinition.taskDefinitionArn')
 
             CLUSTER_NAME="cstreet-fargate-cluster-prod"
 
