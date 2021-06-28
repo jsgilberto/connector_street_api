@@ -1,0 +1,328 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Connector Street API ECS infrastructure
+
+Parameters:
+
+  NetworkStackName:
+    Description: The name of the stack with the network components.
+    Type: String
+
+  TaskDefStackName:
+    Description: The name of the stack with the tasks definitions.
+    Type: String
+
+  CertificateArn:
+    Description: The ARN of the SSL Certificate to apply to the load balancer.
+    Type: String
+  
+  LoadBalancerCustomDNS:
+    Description: The custom DNS name of the Load Balancer
+    Type: String
+
+  HostedZoneId:
+    Description: The HoztedZoneId of your domain. You can find this value in Route 53.
+    Type: String
+
+Resources:
+
+  # ECS Cluster
+  ECSCluster:
+    Type: 'AWS::ECS::Cluster'
+    Properties:
+      ClusterName: cstreet-fargate-cluster-prod
+      CapacityProviders:
+        - FARGATE
+      DefaultCapacityProviderStrategy:
+        - CapacityProvider: FARGATE
+          Weight: 1
+  
+  # Security Groups
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: LoadBalancerSG
+      GroupDescription: Allow HTTP to the load balancer
+      VpcId:
+        Fn::ImportValue: 
+          !Sub ${NetworkStackName}-VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      # SecurityGroupEgress:
+      #   - IpProtocol: tcp
+      #     FromPort: 80
+      #     ToPort: 80
+      #     CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: {Ref: 'AWS::StackName'}
+
+  AllEgressSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: AllOutboundSG
+      GroupDescription: Allow all outbound traffic
+      VpcId:
+        Fn::ImportValue: 
+          !Sub ${NetworkStackName}-VPCId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: {Ref: 'AWS::StackName'}
+
+  TraefikSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: TraefikSG
+      GroupDescription: Allow HTTP to the Traefik service
+      VpcId:
+        Fn::ImportValue: 
+          !Sub ${NetworkStackName}-VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 5555
+          ToPort: 5555
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: {Ref: 'AWS::StackName'}
+  
+  BackendSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: BackendSG
+      GroupDescription: Allow traffic to the backend service
+      VpcId:
+        Fn::ImportValue: 
+          !Sub ${NetworkStackName}-VPCId
+      SecurityGroupIngress:
+        # Django
+        - IpProtocol: tcp
+          FromPort: 5000
+          ToPort: 5000
+          CidrIp: 0.0.0.0/0
+        # Flower
+        - IpProtocol: tcp
+          FromPort: 5555
+          ToPort: 5555
+          CidrIp: 0.0.0.0/0
+        # Redis
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: {Ref: 'AWS::StackName'}
+  
+  
+  ECSServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: ecs-service
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: ['elasticloadbalancing:DeregisterInstancesFromLoadBalancer', 'elasticloadbalancing:DeregisterTargets',
+              'elasticloadbalancing:Describe*', 'elasticloadbalancing:RegisterInstancesWithLoadBalancer',
+              'elasticloadbalancing:RegisterTargets', 'ec2:Describe*', 'ec2:AuthorizeSecurityGroupIngress']
+            Resource: '*'
+  
+  # Private Namespace for Service Discovery
+  # https://aws.amazon.com/premiumsupport/knowledge-center/cloudformation-ecs-service-discovery/
+  PrivateNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+        Name: cstreet-api.com
+        Vpc:
+          Fn::ImportValue: 
+            !Sub ${NetworkStackName}-VPCId
+  
+  TraefikService:
+    Type: AWS::ECS::Service
+    DependsOn: 
+      - BackendService
+      - ALBListener
+    Properties:
+      Cluster: !Ref 'ECSCluster'
+      DesiredCount: '1'
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: 
+            - !Ref TraefikSecurityGroup
+            - !Ref AllEgressSecurityGroup
+          Subnets: 
+            - Fn::ImportValue: !Sub ${NetworkStackName}-pub-sn-1
+            - Fn::ImportValue: !Sub ${NetworkStackName}-pub-sn-2
+      LoadBalancers:
+      - ContainerName: traefik
+        ContainerPort: '80'
+        TargetGroupArn: !Ref 'ECSTargetGroup'
+      TaskDefinition:
+        Fn::ImportValue:
+          !Sub ${TaskDefStackName}-traefik-task-def
+      ServiceName: traefik
+  
+  DiscoveryService:
+    Type: AWS::ServiceDiscovery::Service
+    Properties: 
+      Description: Discovery Service for django
+      DnsConfig:
+        RoutingPolicy: MULTIVALUE
+        DnsRecords:
+          - TTL: 60
+            Type: A
+      HealthCheckCustomConfig: 
+        FailureThreshold: 1
+      Name: backend
+      NamespaceId: !Ref PrivateNamespace
+
+  BackendService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref 'ECSCluster'
+      DesiredCount: '1'
+      EnableExecuteCommand: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          SecurityGroups: 
+            - !Ref BackendSecurityGroup
+            - !Ref AllEgressSecurityGroup
+          Subnets: 
+            - Fn::ImportValue: !Sub ${NetworkStackName}-priv-sn-1
+            - Fn::ImportValue: !Sub ${NetworkStackName}-priv-sn-2
+      TaskDefinition:
+        Fn::ImportValue:
+          !Sub ${TaskDefStackName}-backend-task-def
+      ServiceName: backend
+      ServiceRegistries:
+        - RegistryArn: !GetAtt DiscoveryService.Arn
+  
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: cstreet-ecs-alb-prod
+      Scheme: internet-facing
+      LoadBalancerAttributes:
+      - Key: idle_timeout.timeout_seconds
+        Value: '30'
+      Subnets:
+        - Fn::ImportValue: !Sub ${NetworkStackName}-pub-sn-1
+        - Fn::ImportValue: !Sub ${NetworkStackName}-pub-sn-2
+      SecurityGroups: 
+        - !Ref LoadBalancerSecurityGroup
+        - !Ref AllEgressSecurityGroup
+      Type: application
+
+  ECSTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: LoadBalancer
+    Properties:
+      HealthCheckIntervalSeconds: 60
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 30
+      HealthyThresholdCount: 2
+      Name: ECSTargetGroup
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      TargetType: ip
+      VpcId:
+        Fn::ImportValue:
+          !Sub ${NetworkStackName}-VPCId
+  
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn: ECSServiceRole
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref ECSTargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: '80'
+      Protocol: HTTP
+
+  ALBListenerHTTPS:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn: ECSServiceRole
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref ECSTargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+
+  ECSALBListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    DependsOn: ALBListener
+    Properties:
+      Actions:
+      - Type: forward
+        TargetGroupArn: !Ref ECSTargetGroup
+      Conditions:
+      - Field: path-pattern
+        Values: [/]
+      ListenerArn: !Ref ALBListener
+      Priority: 1
+  
+  ECSALBListenerHTTPSRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    DependsOn: ALBListenerHTTPS
+    Properties:
+      Actions:
+      - Type: forward
+        TargetGroupArn: !Ref ECSTargetGroup
+      Conditions:
+      - Field: path-pattern
+        Values: [/]
+      ListenerArn: !Ref ALBListenerHTTPS
+      Priority: 1
+
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref HostedZoneId
+      Name: !Ref LoadBalancerCustomDNS
+      AliasTarget:
+        DNSName: !GetAtt LoadBalancer.DNSName
+        HostedZoneId: !GetAtt LoadBalancer.CanonicalHostedZoneID
+        EvaluateTargetHealth: false
+      Type: A
+
+Outputs:
+
+  LoadBalancerDNS:
+    Description: DNS name of the Load balancer
+    Value: !Sub http://${LoadBalancer.DNSName}
+    Export: 
+      Name: LoadBalancerDNSName

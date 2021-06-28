@@ -1,0 +1,222 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Connector Street API Tasks Definitions
+
+Parameters:
+
+  ECRRepositoriesStackName:
+    Description: The name of the stack with the ECR repositories.
+    Type: String
+  # CPU and Memory in Fargate:
+  # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/AWS_Fargate.html#fargate-tasks-size
+
+Resources:
+
+  # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_execution_IAM_role.html
+  ECSTasksRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - Effect: "Allow"
+            Principal: 
+              Service: 
+                - "ecs-tasks.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      Path: "/"
+  
+  # This policy has too much power!
+  # This should be able to:
+  # - connect to ECR
+  # - connect to Cloudwatch (create log groups, etc)
+  # - connecto to ECS Agent for Execution of commands (smm)
+  RolePolicies: 
+    Type: "AWS::IAM::Policy"
+    Properties: 
+      PolicyName: "root"
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - Effect: "Allow"
+            Action: "*"
+            Resource: "*"
+      Roles: 
+        - Ref: "ECSTasksRole"
+
+  TraefikTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: traefik
+          Image:
+            Fn::ImportValue:
+              !Sub ${ECRRepositoriesStackName}-traefik-repo
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_awslogs.html#create_awslogs_logdriver_options
+            Options:
+              awslogs-create-group: true
+              awslogs-group: "/ecs/traefik-task-definition"
+              awslogs-region: "us-east-1"
+              awslogs-stream-prefix: "ecs"
+          PortMappings:
+            - ContainerPort: "80"
+              Protocol: tcp
+            - ContainerPort: "5555"
+              Protocol: tcp
+      Memory: "512"
+      Cpu: "256"
+      NetworkMode: "awsvpc"
+      Family: traefik-task-def
+      ExecutionRoleArn:
+        Ref: ECSTasksRole
+      TaskRoleArn:
+        Ref: ECSTasksRole
+      Tags:
+        - Key: Name
+          Value: {Ref: 'AWS::StackName'}
+
+  BackendTaskDef:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: django
+          DependsOn:
+            - Condition: START
+              ContainerName: redis
+          EnvironmentFiles:
+            - Value: "arn:aws:s3:::connector-street-env/.django.env"
+              Type: s3
+            - Value: "arn:aws:s3:::connector-street-env/.postgres.env"
+              Type: s3
+          Command:
+            - "/start"
+          Image:
+            Fn::ImportValue:
+              !Sub ${ECRRepositoriesStackName}-django-repo
+          # if true, and the container fails or stops for any reason,
+          # all other containers that are part of the task are stopped.
+          Essential: true
+          LogConfiguration:
+            LogDriver: awslogs
+            # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_awslogs.html#create_awslogs_logdriver_options
+            Options:
+              awslogs-create-group: true
+              awslogs-group: "/ecs/django-task-definition"
+              awslogs-region: "us-east-1"
+              awslogs-stream-prefix: "ecs"
+        - Name: redis
+          Image: redis:5.0
+          Memory: "512"
+          Cpu: "256"
+          Essential: false
+          LogConfiguration:
+            LogDriver: awslogs
+            # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_awslogs.html#create_awslogs_logdriver_options
+            Options:
+              awslogs-create-group: true
+              awslogs-group: "/ecs/redis-task-definition"
+              awslogs-region: "us-east-1"
+              awslogs-stream-prefix: "ecs"
+        - Name: celerybeat
+          DependsOn:
+            - Condition: START
+              ContainerName: redis
+          Image:
+            Fn::ImportValue:
+              !Sub ${ECRRepositoriesStackName}-celeryBeat-repo
+          Essential: false
+          Command:
+            - "/start-celerybeat"
+          EnvironmentFiles:
+            - Value: "arn:aws:s3:::connector-street-env/.django.env"
+              Type: s3
+            - Value: "arn:aws:s3:::connector-street-env/.postgres.env"
+              Type: s3
+          LogConfiguration:
+            LogDriver: awslogs
+            # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_awslogs.html#create_awslogs_logdriver_options
+            Options:
+              awslogs-create-group: true
+              awslogs-group: "/ecs/celerybeat-task-definition"
+              awslogs-region: "us-east-1"
+              awslogs-stream-prefix: "ecs"
+        - Name: celeryworker
+          DependsOn:
+            - Condition: START
+              ContainerName: redis
+          Image:
+            Fn::ImportValue:
+              !Sub ${ECRRepositoriesStackName}-celeryWorker-repo
+          Essential: false
+          Command:
+            - "/start-celeryworker"
+          EnvironmentFiles:
+            - Value: "arn:aws:s3:::connector-street-env/.django.env"
+              Type: s3
+            - Value: "arn:aws:s3:::connector-street-env/.postgres.env"
+              Type: s3
+          LogConfiguration:
+            LogDriver: awslogs
+            # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_awslogs.html#create_awslogs_logdriver_options
+            Options:
+              awslogs-create-group: true
+              awslogs-group: "/ecs/celeryworker-task-definition"
+              awslogs-region: "us-east-1"
+              awslogs-stream-prefix: "ecs"
+        - Name: flower
+          DependsOn:
+            - Condition: START
+              ContainerName: redis
+          EnvironmentFiles:
+            - Value: "arn:aws:s3:::connector-street-env/.django.env"
+              Type: s3
+            - Value: "arn:aws:s3:::connector-street-env/.postgres.env"
+              Type: s3
+          Command:
+            - "/start-flower"
+          Image:
+            Fn::ImportValue:
+              !Sub ${ECRRepositoriesStackName}-flower-repo
+          Essential: false
+          LogConfiguration:
+            LogDriver: awslogs
+            # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_awslogs.html#create_awslogs_logdriver_options
+            Options:
+              awslogs-create-group: true
+              awslogs-group: "/ecs/flower-task-definition"
+              awslogs-region: "us-east-1"
+              awslogs-stream-prefix: "ecs"
+      Memory: "2048"
+      Cpu: "1024"
+      NetworkMode: "awsvpc"
+      Family: backend
+      ExecutionRoleArn:
+        Ref: ECSTasksRole
+      TaskRoleArn:
+        Ref: ECSTasksRole
+      Tags:
+        - Key: Name
+          Value: {Ref: 'AWS::StackName'}
+  
+
+
+Outputs:
+
+  TraefikTaskDefinition:
+    Description: .
+    Value: !Ref TraefikTaskDef
+    Export: 
+      Name: !Sub ${AWS::StackName}-traefik-task-def
+  
+  BackendTaskDefinition:
+    Description: .
+    Value: !Ref BackendTaskDef
+    Export: 
+      Name: !Sub ${AWS::StackName}-backend-task-def

@@ -1,0 +1,6 @@
+[
+    {
+        "ParameterKey": "ECRRepositoriesStackName",
+        "ParameterValue": "cstreet-ecr-repositories-prod"
+    }
+]

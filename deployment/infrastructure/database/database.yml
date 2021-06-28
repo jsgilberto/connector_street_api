@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Connector Street API databases infrastructure
+
+Parameters:
+
+  NetworkStackName:
+    Description: The name of the stack with the network components
+    Type: String
+
+  DBName:
+    Description: The name of the database.
+    Type: String
+
+  DBUsername:
+    Description: The username of the db instance.
+    Type: String
+  
+  DBPassword:
+    Description: The password of the db instance
+    Type: String
+  
+  DBPort:
+    Description: The password of the db instance
+    Type: String
+    Default: "5432"
+
+  DBAllocatedStorage:
+    Description: The allocated storage for the db instance
+    Type: String
+
+  DBEngine:
+    Description: The database engine
+    Type: String
+    Default: postgres
+
+  DBEngineVersion:
+    Description: The database engine version
+    Type: String
+    Default: "13.2"
+  
+  DBInstanceClass:
+    Description: The database engine version
+    Type: String
+    Default: "db.t3.micro"
+
+Resources:
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties: 
+      DBSubnetGroupDescription: "Subnet Group for RDS instance."
+      SubnetIds: 
+        - Fn::ImportValue:
+            !Sub ${NetworkStackName}-priv-sn-1
+        - Fn::ImportValue:
+            !Sub ${NetworkStackName}-priv-sn-2
+      Tags: 
+        - Key: Name
+          Value: {Ref: 'AWS::StackName'}
+  
+  DBEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId:
+        Fn::ImportValue:
+          !Sub ${NetworkStackName}-VPCId
+      GroupDescription: Open database for access
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: "5432"
+        ToPort: "5432"
+        CidrIp: "0.0.0.0/0"
+
+  Database:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBName:
+        Ref: DBName
+      DBInstanceClass: 
+        Ref: DBInstanceClass
+      Engine: 
+        Ref: DBEngine
+      EngineVersion:
+        Ref: DBEngineVersion
+      AllocatedStorage:
+        Ref: DBAllocatedStorage
+      # https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/dynamic-references.html#dynamic-references-ssm-secure-strings
+      MasterUsername: 
+        Ref: DBUsername
+      MasterUserPassword: 
+        Ref: DBPassword
+      Port:
+        Ref: DBPort
+      DBSubnetGroupName:
+        Ref: DBSubnetGroup
+      VPCSecurityGroups:
+        - !GetAtt DBEC2SecurityGroup.GroupId
+    DeletionPolicy: Snapshot
+
+
+Outputs:
+  DBInstanceName:
+    Description: Database instance name
+    Value: !Ref Database
+    Export: 
+      Name: !Sub ${AWS::StackName}-DB-instance-name
+
+  DBEndpoint:
+    Description: Database Endpoint
+    Value: !GetAtt Database.Endpoint.Address
+    Export: 
+      Name: !Sub ${AWS::StackName}-DB-endpoint
+  
+  DBPort:
+    Description: Database Port
+    Value: !GetAtt Database.Endpoint.Port
+    Export: 
+      Name: !Sub ${AWS::StackName}-DB-port

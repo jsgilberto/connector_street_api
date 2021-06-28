@@ -1,0 +1,163 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Connector Street API ECR repositories
+
+Parameters: 
+
+  DjangoRepo:
+    Description: The name of the django image
+    Type: String
+  
+  TraefikRepo:
+    Description: The name of the traefik image
+    Type: String
+  
+  CeleryWorkerRepo:
+    Description: The name of the celeryworker image
+    Type: String
+  
+  CeleryBeatRepo:
+    Description: The name of the celerybeat image
+    Type: String
+
+  FlowerRepo:
+    Description: The name of the flower image
+    Type: String
+
+Resources:
+
+  DjangoRepository: 
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Ref DjangoRepo
+      RepositoryPolicyText: 
+        Version: "2012-10-17"
+        Statement: 
+          - Sid: AllowPushPull
+            Effect: Allow
+            Principal: 
+              AWS: 
+                - "arn:aws:iam::520099902592:user/admin"
+            Action: 
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:PutImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+
+  TraefikRepository: 
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Ref TraefikRepo
+      RepositoryPolicyText: 
+        Version: "2012-10-17"
+        Statement: 
+          - Sid: AllowPushPull
+            Effect: Allow
+            Principal: 
+              AWS: 
+                - "arn:aws:iam::520099902592:user/admin"
+            Action: 
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:PutImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+  
+  FlowerRepository: 
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Ref FlowerRepo
+      RepositoryPolicyText: 
+        Version: "2012-10-17"
+        Statement: 
+          - Sid: AllowPushPull
+            Effect: Allow
+            Principal: 
+              AWS: 
+                - "arn:aws:iam::520099902592:user/admin"
+            Action: 
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:PutImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+  
+  CeleryWorkerRepository: 
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Ref CeleryWorkerRepo
+      RepositoryPolicyText: 
+        Version: "2012-10-17"
+        Statement: 
+          - Sid: AllowPushPull
+            Effect: Allow
+            Principal: 
+              AWS: 
+                - "arn:aws:iam::520099902592:user/admin"
+            Action: 
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:PutImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+  
+  CeleryBeatRepository: 
+    Type: AWS::ECR::Repository
+    Properties: 
+      RepositoryName: !Ref CeleryBeatRepo
+      RepositoryPolicyText: 
+        Version: "2012-10-17"
+        Statement: 
+          - Sid: AllowPushPull
+            Effect: Allow
+            Principal: 
+              AWS: 
+                - "arn:aws:iam::520099902592:user/admin"
+            Action: 
+              - "ecr:GetDownloadUrlForLayer"
+              - "ecr:BatchGetImage"
+              - "ecr:BatchCheckLayerAvailability"
+              - "ecr:PutImage"
+              - "ecr:InitiateLayerUpload"
+              - "ecr:UploadLayerPart"
+              - "ecr:CompleteLayerUpload"
+
+Outputs:
+
+  DjangoRepositoryURI:
+    Description: .
+    Value: !GetAtt DjangoRepository.RepositoryUri
+    Export: 
+      Name: !Sub ${AWS::StackName}-django-repo
+
+  TraefikRepositoryURI:
+    Description: .
+    Value: !GetAtt TraefikRepository.RepositoryUri
+    Export: 
+      Name: !Sub ${AWS::StackName}-traefik-repo
+  
+  FlowerRepositoryURI:
+    Description: .
+    Value: !GetAtt FlowerRepository.RepositoryUri
+    Export: 
+      Name: !Sub ${AWS::StackName}-flower-repo
+  
+  CeleryWorkerRepositoryURI:
+    Description: .
+    Value: !GetAtt CeleryWorkerRepository.RepositoryUri
+    Export: 
+      Name: !Sub ${AWS::StackName}-celeryWorker-repo
+  
+  CeleryBeatRepositoryURI:
+    Description: .
+    Value: !GetAtt CeleryBeatRepository.RepositoryUri
+    Export: 
+      Name: !Sub ${AWS::StackName}-celeryBeat-repo

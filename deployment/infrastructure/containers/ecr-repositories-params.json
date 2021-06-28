@@ -1,0 +1,22 @@
+[
+    {
+        "ParameterKey": "DjangoRepo",
+        "ParameterValue": "cstreet_api_production_django"
+    },
+    {
+        "ParameterKey": "TraefikRepo",
+        "ParameterValue": "cstreet_api_production_traefik"
+    },
+    {
+        "ParameterKey": "CeleryWorkerRepo",
+        "ParameterValue": "cstreet_api_production_celeryworker"
+    },
+    {
+        "ParameterKey": "CeleryBeatRepo",
+        "ParameterValue": "cstreet_api_production_celerybeat"
+    },
+    {
+        "ParameterKey": "FlowerRepo",
+        "ParameterValue": "cstreet_api_production_flower"
+    }
+]

@@ -1,0 +1,34 @@
+[
+    {
+        "ParameterKey": "NetworkStackName",
+        "ParameterValue": "cstreet-network-prod"
+    },
+    {
+        "ParameterKey": "DBName",
+        "ParameterValue": "cstreet_db_prod"
+    },
+    {
+        "ParameterKey": "DBUsername",
+        "ParameterValue": "yourdbusername"
+    },
+    {
+        "ParameterKey": "DBPassword",
+        "ParameterValue": "yourdbpassword"
+    },
+    {
+        "ParameterKey": "DBAllocatedStorage",
+        "ParameterValue": "20"
+    },
+    {
+        "ParameterKey": "DBEngine",
+        "ParameterValue": "postgres"
+    },
+    {
+        "ParameterKey": "DBEngineVersion",
+        "ParameterValue": "13.2"
+    },
+    {
+        "ParameterKey": "DBInstanceClass",
+        "ParameterValue": "db.t3.micro"
+    }
+]

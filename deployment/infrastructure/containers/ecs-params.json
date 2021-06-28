@@ -1,0 +1,22 @@
+[
+    {
+        "ParameterKey": "NetworkStackName",
+        "ParameterValue": "cstreet-network-prod"
+    },
+    {
+        "ParameterKey": "TaskDefStackName",
+        "ParameterValue": "cstreet-tasks-definitions-prod"
+    },
+    {
+        "ParameterKey": "CertificateArn",
+        "ParameterValue": "arn:aws:acm:us-east-1:520099902592:certificate/8468cf53-0f66-4087-9385-3f8dacecaea9"
+    },
+    {
+        "ParameterKey": "LoadBalancerCustomDNS",
+        "ParameterValue": "cstreet-api.com"
+    },
+    {
+        "ParameterKey": "HostedZoneId",
+        "ParameterValue": "Z076297029538J9T017HC"
+    }
+]
