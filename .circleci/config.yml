@@ -13,7 +13,8 @@ jobs:
 
   build:
     docker:
-      - image: vistaprintufi/docker-aws-build
+      # - image: vistaprintufi/docker-aws-build
+      - image: steffenmllr/docker-aws-cli
     steps:
       - checkout
       - run:
