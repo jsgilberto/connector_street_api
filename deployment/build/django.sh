@@ -1,4 +1,6 @@
 #!/bin/bash
+echo "DJANGO_SETTINGS_MODULE:"
+echo $DJANGO_SETTINGS_MODULE
 
 # Build
 docker build \
@@ -26,11 +28,11 @@ docker build \
     --build-arg POSTGRES_USER \
     --build-arg POSTGRES_PASSWORD \
     --file ./compose/production/django/Dockerfile \
-    --tag $REPOSITORY_URI:latest .
+    --tag "${REPOSITORY_URI}:latest" .
 
 # Tag
-docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+docker tag "${REPOSITORY_URI}:latest" "${REPOSITORY_URI}:${IMAGE_TAG}"
 
 # Push
-docker push $REPOSITORY_URI:latest
-docker push $REPOSITORY_URI:IMAGE_TAG
+docker push "${REPOSITORY_URI}:latest"
+docker push "${REPOSITORY_URI}:${IMAGE_TAG}"
