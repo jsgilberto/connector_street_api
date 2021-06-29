@@ -34,14 +34,32 @@ jobs:
       - run:
           name: "Build, tag and push images"
           command: |
+            export IMAGE_TAG="${CIRCLE_WORKFLOW_ID:0:7}"
+
             # Django
             export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_django"
 
-            export IMAGE_TAG="${CIRCLE_WORKFLOW_ID:0:7}"
+            sh deployment/build/django.sh
+
+            # Celery Beat
+            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_celerybeat"
 
             sh deployment/build/django.sh
 
-            # build other images as well.
+            # Celery Worker
+            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_celeryworker"
+
+            sh deployment/build/django.sh
+
+            # Flower
+            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_flower"
+
+            sh deployment/build/django.sh
+
+            # Traefik
+            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_traefik"
+
+            sh deployment/build/traefik.sh
       - run:
           name: "Update backend task definition file"
           command: |
@@ -54,19 +72,61 @@ jobs:
               --task-definition backend \
               --query taskDefinition > deployment/tasks/backend-task-def.json
 
-            # Modify task definition file to new container definition:
-            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_django"
 
+
+            # Modify task definition file to new container definition:
             export IMAGE_TAG="${CIRCLE_WORKFLOW_ID:0:7}"
+
+            # Django
+            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_django"
 
             python3 deployment/scripts/update_task_definition.py \
               --container-name django \
               --image-uri "${REPOSITORY_URI}:${IMAGE_TAG}" \
               --task-definition deployment/tasks/backend-task-def.json
 
+            # Celery Beat
+            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_celerybeat"
+
+            python3 deployment/scripts/update_task_definition.py \
+              --container-name celerybeat \
+              --image-uri "${REPOSITORY_URI}:${IMAGE_TAG}" \
+              --task-definition deployment/tasks/backend-task-def.json
+
+            # Celery Worker
+            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_celeryworker"
+
+            python3 deployment/scripts/update_task_definition.py \
+              --container-name celeryworker \
+              --image-uri "${REPOSITORY_URI}:${IMAGE_TAG}" \
+              --task-definition deployment/tasks/backend-task-def.json
+
+            # Flower
+            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_flower"
+
+            python3 deployment/scripts/update_task_definition.py \
+              --container-name flower \
+              --image-uri "${REPOSITORY_URI}:${IMAGE_TAG}" \
+              --task-definition deployment/tasks/backend-task-def.json
+
+            # Retrieve and Save 'traefik-task-def' task definition in 'tasks' directory
+            aws ecs describe-task-definition \
+              --task-definition traefik-task-def \
+              --query taskDefinition > deployment/tasks/traefik-task-def.json
+
+            # Traefik
+            export REPOSITORY_URI="520099902592.dkr.ecr.us-east-1.amazonaws.com/cstreet_api_production_traefik"
+
+            python3 deployment/scripts/update_task_definition.py \
+              --container-name traefik \
+              --image-uri "${REPOSITORY_URI}:${IMAGE_TAG}" \
+              --task-definition deployment/tasks/traefik-task-def.json
+
             cat deployment/tasks/backend-task-def.json
+            cat deployment/tasks/traefik-task-def.json
+
       - run:
-          name: "Update ECS service in AWS"
+          name: "Update ECS services in AWS"
           command: |
 
             # Upload new task definition to AWS ECS.
@@ -84,6 +144,22 @@ jobs:
               --service $SERVICE \
               --task-definition $TASK_DEFINITION_ARN \
               --force-new-deployment
+              --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100,deploymentCircuitBreaker={enable=true,rollback=true}"
+
+            # Upload new task definition to AWS ECS.
+            TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
+              --cli-input-json file://deployment/tasks/traefik-task-def.json | jq \
+              --raw-output '.taskDefinition.taskDefinitionArn')
+
+            SERVICE="traefik"
+
+            # Update Service with new task definition.
+            aws ecs update-service \
+              --cluster $CLUSTER_NAME \
+              --service $SERVICE \
+              --task-definition $TASK_DEFINITION_ARN \
+              --force-new-deployment
+              --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100,deploymentCircuitBreaker={enable=true,rollback=true}"
 
 workflows:
   default:
