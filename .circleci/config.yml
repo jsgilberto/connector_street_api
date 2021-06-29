@@ -202,9 +202,9 @@ workflows:
   default:
     jobs:
       - echo-workflow-id
-      - static-checks
+      - static-checks:
           requires: [echo-workflow-id]
-      - tests
+      - tests:
           requires: [static-checks]
       - build-deploy:
           requires: [tests]
