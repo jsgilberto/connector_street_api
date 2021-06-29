@@ -31,14 +31,15 @@ jobs:
             docker-compose -f local.yml run django mypy connector_street_api
 
   tests:
-    docker:
-      - image: youpy/docker-compose-git:latest
+    # docker:
+      # - image: youpy/docker-compose-git:latest
+    machine: true
     steps:
       - checkout
       # needed to run docker images with docker installed.
       - setup_remote_docker
       - run:
-          name: Test project
+          name: Run tests
           command: |
             docker-compose -f local.yml run django pytest
 
