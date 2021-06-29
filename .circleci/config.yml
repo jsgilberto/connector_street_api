@@ -37,7 +37,7 @@ jobs:
     steps:
       - checkout
       # needed to run docker images with docker installed.
-      - setup_remote_docker
+      # - setup_remote_docker
       - run:
           name: Run tests
           command: |
