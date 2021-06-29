@@ -19,7 +19,13 @@ jobs:
       # needed to run docker images with docker installed.
       - setup_remote_docker
       - run:
-          name: Test project
+          name: Test commands
+          command: |
+            echo $PWD
+            ls
+            ls connector_street_api
+      - run:
+          name: Check static code with mypy.
           command: |
             docker-compose -f local.yml run django mypy connector_street_api
 
