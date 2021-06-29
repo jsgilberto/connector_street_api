@@ -11,7 +11,33 @@ jobs:
             echo "CIRCLE_WORKFLOW_ID = ${CIRCLE_WORKFLOW_ID}"
             echo "SHORT CIRCLE_WORKFLOW_ID = ${CIRCLE_WORKFLOW_ID:0:7}"
 
-  build:
+  static-checks:
+    docker:
+      - image: youpy/docker-compose-git:latest
+    steps:
+      - checkout
+      # needed to run docker images with docker installed.
+      - setup_remote_docker
+      - run:
+          name: Test project
+          command: |
+            docker-compose -f local.yml run django mypy connector_street_api
+
+  tests:
+    docker:
+      - image: youpy/docker-compose-git:latest
+    steps:
+      - checkout
+      # needed to run docker images with docker installed.
+      - setup_remote_docker
+      - run:
+          name: Test project
+          command: |
+            docker-compose -f local.yml run django pytest
+
+
+
+  build-deploy:
     docker:
       - image: vistaprintufi/docker-aws-build
       # - image: hireme/docker-aws-cli:1.0.1
@@ -160,9 +186,29 @@ jobs:
               --task-definition $TASK_DEFINITION_ARN \
               --force-new-deployment \
               --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100,deploymentCircuitBreaker={enable=true,rollback=true}"
+      # - run:
+      #     name: "Apply Database migrations."
+      #     command: |
+      #       CLUSTER_NAME=cstreet-fargate-cluster-prod
+      #       TASK=$(aws ecs list-tasks --cluster cstreet-fargate-cluster-prod \
+      #         --family backend | jq --raw-output '.taskArns[0]')
 
+      #       aws ecs execute-command --cluster $CLUSTER_NAME \
+      #         --task $TASK \
+      #         --container django \
+      #         --interactive \
+      #         --command "python manage.py migrate --no-input"
 workflows:
   default:
     jobs:
       - echo-workflow-id
-      - build
+      - static-checks
+          requires: [echo-workflow-id]
+      - tests
+          requires: [static-checks]
+      - build-deploy:
+          requires: [tests]
+          filters:
+            branches:
+              only: [main]
+
