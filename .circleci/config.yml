@@ -158,7 +158,7 @@ jobs:
               --cluster $CLUSTER_NAME \
               --service $SERVICE \
               --task-definition $TASK_DEFINITION_ARN \
-              --force-new-deployment
+              --force-new-deployment \
               --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100,deploymentCircuitBreaker={enable=true,rollback=true}"
 
 workflows:

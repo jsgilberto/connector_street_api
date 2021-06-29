@@ -334,13 +334,28 @@ python3 deployment/scripts/update_task_definition.py \
     --task-definition deployment/tasks/backend-task-def.json
 ```
 
+Script for registering a new task definition in AWS:
+
+```bash
+aws ecs register-task-definition \
+    --cli-input-json file://deployment/tasks/backend-task-def.json
+```
+
+And to get the new taskDefinitionArn (requires jq):
+
+```bash
+TASK_DEFINITION_ARN=$(aws ecs register-task-definition \
+    --cli-input-json file://deployment/tasks/traefik-task-def.json | jq \
+    --raw-output '.taskDefinition.taskDefinitionArn')
+```
+
 Update an ECS Service:
 
 ```bash
 aws ecs update-service \
     --cluster cstreet-fargate-cluster-prod \
     --service backend \
-    --task-definition $TASK_DEFINITION_ARN
+    --task-definition $TASK_DEFINITION_ARN \
     --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100,deploymentCircuitBreaker={enable=true,rollback=true}"
 ```
 
