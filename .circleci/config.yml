@@ -13,7 +13,8 @@ jobs:
 
   static-checks:
     docker:
-      - image: youpy/docker-compose-git:latest
+      # - image: youpy/docker-compose-git:latest
+      - image: tmaier/docker-compose:latest
     steps:
       - checkout
       # needed to run docker images with docker installed.
@@ -22,11 +23,14 @@ jobs:
           name: Test commands
           command: |
             echo $PWD
+            docker --version
+            docker-compose --version
             ls
             ls connector_street_api
       - run:
           name: Check static code with mypy.
           command: |
+            exit 1
             docker-compose -f local.yml run django mypy connector_street_api
 
   tests:
