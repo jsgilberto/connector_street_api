@@ -12,13 +12,14 @@ jobs:
             echo "SHORT CIRCLE_WORKFLOW_ID = ${CIRCLE_WORKFLOW_ID:0:7}"
 
   static-checks:
-    docker:
+    # docker:
       # - image: youpy/docker-compose-git:latest
-      - image: tmaier/docker-compose:latest
+      # - image: tmaier/docker-compose:latest
+    machine: true
     steps:
       - checkout
       # needed to run docker images with docker installed.
-      - setup_remote_docker
+      # - setup_remote_docker
       - run:
           name: Test commands
           command: |
@@ -27,6 +28,7 @@ jobs:
             docker-compose --version
             ls
             ls connector_street_api
+            curl --version
       - run:
           name: Check static code with mypy.
           command: |
