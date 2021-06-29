@@ -356,6 +356,7 @@ aws ecs update-service \
     --cluster cstreet-fargate-cluster-prod \
     --service backend \
     --task-definition $TASK_DEFINITION_ARN \
+    --force-new-deployment \
     --deployment-configuration "maximumPercent=200,minimumHealthyPercent=100,deploymentCircuitBreaker={enable=true,rollback=true}"
 ```
 
