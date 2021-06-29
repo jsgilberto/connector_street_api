@@ -296,25 +296,26 @@ do that, we need enter the container running django and execute the command:
 
 
 ```bash
-CLUSTER_NAME=your_cluster_name
-TASK_ID=your_task_id
+CLUSTER_NAME=cstreet-fargate-cluster-prod
+TASK=$(aws ecs list-tasks --cluster cstreet-fargate-cluster-prod \
+--family backend | jq --raw-output '.taskArns[0]')
 
 aws ecs execute-command --cluster $CLUSTER_NAME \
-    --task $TASK_ID \
+    --task $TASK \
     --container django \
     --interactive \
-    --command "/bin/sh"
+    --command "/bin/bash"
+
+python manage.py migrate --no-input
 ```
-
-
 
 ## Misc
 
 Get the ARN of some task:
 
 ```bash
-aws ecs list-tasks --cluster cstreet-fargate-cluster-prod \
---family django-task-def | jq '.taskArns[0]'
+TASK=$(aws ecs list-tasks --cluster cstreet-fargate-cluster-prod \
+--family backend | jq --raw-output '.taskArns[0]')
 ```
 
 Download existing Task definition:
