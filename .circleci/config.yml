@@ -11,15 +11,11 @@ jobs:
             echo "CIRCLE_WORKFLOW_ID = ${CIRCLE_WORKFLOW_ID}"
             echo "SHORT CIRCLE_WORKFLOW_ID = ${CIRCLE_WORKFLOW_ID:0:7}"
 
-  static-checks:
-    # docker:
-      # - image: youpy/docker-compose-git:latest
-      # - image: tmaier/docker-compose:latest
+  static-type-checks:
+    # circleci can't mount volumes (using docker or docker-compose) with a docker executor
     machine: true
     steps:
       - checkout
-      # needed to run docker images with docker installed.
-      # - setup_remote_docker
       - run:
           name: Test commands
           command: |
@@ -32,7 +28,6 @@ jobs:
       - run:
           name: Check static code with mypy.
           command: |
-            exit 1
             docker-compose -f local.yml run django mypy connector_street_api
 
   tests:
@@ -46,8 +41,6 @@ jobs:
           name: Test project
           command: |
             docker-compose -f local.yml run django pytest
-
-
 
   build-deploy:
     docker:
@@ -214,10 +207,10 @@ workflows:
   default:
     jobs:
       - echo-workflow-id
-      - static-checks:
+      - static-type-checks:
           requires: [echo-workflow-id]
       - tests:
-          requires: [static-checks]
+          requires: [static-type-checks]
       - build-deploy:
           requires: [tests]
           filters:
