@@ -36,25 +36,21 @@ how the site behaves for both kinds of users.
 
 Running type checks with mypy:
 
-    $ mypy connector_street_api
+    $ docker-compose -f local.yml run django mypy connector_street_api
 
 ### Test coverage
 
 To run the tests, check your test coverage, and generate an HTML
 coverage report:
 
-    $ coverage run -m pytest
+    $ docker-compose -f local.yml run django coverage run -m pytest
     $ coverage html
     $ open htmlcov/index.html
 
-#### Running tests with py.test
+#### Running tests with pytest
 
     $ docker-compose -f local.yml run django pytest
 
-### Live reloading and Sass CSS compilation
-
-Moved to [Live reloading and SASS
-compilation](http://cookiecutter-django.readthedocs.io/en/latest/live-reloading-and-sass-compilation.html).
 
 ### Celery
 
